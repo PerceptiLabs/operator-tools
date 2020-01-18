@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+if [ $# -lt 2 ]; then
+  echo "USAGE: $0 <namespace> <pod pattern> [-q]"
+  exit 1
+fi
+NS=$1
+ROUTE_NAME=$2
+QUIET=$3
+
+TOOLS_DIR="$(dirname $0)"
+"${TOOLS_DIR}/get_route" ${NS} "${ROUTE_NAME}" -q
+URL=$( "${TOOLS_DIR}/get_route" ${NS} "${ROUTE_NAME}" | tail -n 1 )
+
+try_route(){
+  curl -s -o /dev/null -w "%{http_code}" ${URL} | grep -q 200
+  return $?
+}
+
+try_route
+if [ $? != 0 ]; then
+  echo -n "Waiting for route at ${URL} to return 200 ..."
+  sleep 1
+  try_route
+  while [ $? != 0 ]; do
+    sleep 1
+    try_route
+    echo -n "."
+  done
+  echo "done"
+fi
+echo ${URL}
+

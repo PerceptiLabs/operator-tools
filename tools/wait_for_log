@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+if [ $# -lt 4 ]; then
+  echo USAGE: $0 \<namespace\> \<pod pattern\> \<log pattern\> \<container\>
+  exit 1
+fi
+
+TOOLS_DIR="$(dirname $0)"
+NS=$1
+"${TOOLS_DIR}/get_running_pod" ${NS} $2 -q
+POD=$( "${TOOLS_DIR}/get_running_pod" ${NS} $2 | tail -n 1 )
+LOG_PATTERN=$3
+CONTAINER=$4
+
+get_from_oc(){
+  GOT=$(oc logs ${POD} --namespace=${NS} -c ${CONTAINER} | grep -i "${LOG_PATTERN}" &>/dev/null)
+  return $?
+}
+
+GOT=$(get_from_oc)
+if [ $? == 0 ]; then
+  echo ${POD}
+  exit 0
+fi
+
+echo -n "Waiting for log message ..."
+GOT=$(get_from_oc)
+while [ $? != 0 ]; do
+  sleep 1
+  echo -n .
+  GOT=$(get_from_oc)
+done
+echo ${POD}

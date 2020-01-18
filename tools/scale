@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+
+if [ "$1" == "down" ]; then
+  echo "Scaling down all machines with 'gpu' in their names"
+  oc get machinesets.machine.openshift.io -n openshift-machine-api -o name | grep gpu | cut -d/ -f2 | xargs -L 1 oc scale machinesets -n openshift-machine-api --replicas=0
+  exit 0
+elif [ "$1" == "show" ]; then
+  oc get machinesets -A -o custom-columns=name:.metadata.name,namespace:.metadata.namespace,instanceType:.spec.template.spec.providerSpec.value.instanceType
+  exit 0
+elif [ "$1" == "up" ]; then
+
+  if [ $# -lt 2 ]; then
+    echo "USAGE: $0 up <machineset>"
+    exit 1
+  fi
+
+  MACHINESET=$2
+
+  if [ -z "${SRO_PATH}" ]; then
+    echo "Variable SRO_PATH isn't set. Set it to point to your local clone of github.com/openshift-psap/special-resource-operator"
+    exit 1
+  fi
+
+  if [ ! -f "${SRO_PATH}/Makefile" ]; then
+    echo "SRO_PATH is set to ${SRO_PATH}, but there's no Makefile there"
+    exit 1
+  fi
+
+
+  ms_ns=$(oc get machinesets -A -o custom-columns=name:.metadata.name,namespace:.metadata.namespace | grep "${MACHINESET}" | awk '{print $2}')
+  echo "machineset namespace: ${ms_ns}"
+
+  oc scale machinesets -n ${ms_ns} --replicas=1 ${MACHINESET}
+
+  ######## Wait for the machine
+  get_machine(){
+    oc get machines -n ${ms_ns} --selector "machine.openshift.io/cluster-api-machineset=${MACHINESET}" -o name | cut -d'/' -f2 | head -n 1
+  }
+
+  machine=$(get_machine)
+  if [ -z "${machine}" ]; then
+    echo -n "Waiting for machine to start ..."
+    while [ -z "${machine}" ]; do
+      sleep 1
+      echo -n "."
+      machine=$(get_machine)
+    done
+    echo "done"
+  fi
+
+  echo "machine: ${machine}"
+
+  ######## Wait for the node to come up
+  get_node(){
+    oc get machine -n ${ms_ns} ${machine} -o json | jq .status.nodeRef.name | tr -d \"
+  }
+
+  node=$(get_node)
+  if [ -z "${node}" ] || [ "${node}" == "null" ]; then
+    echo -n "Waiting for node ..."
+    while [ -z "${node}" ] || [ "${node}" == "null" ]; do
+      sleep 1
+      echo -n "."
+      node=$(get_node)
+    done
+    echo "done"
+  fi
+  echo "node: ${node}"
+
+  ###### Redeploy the SRO
+  echo "redeploying SRO ..."
+  echo -n "Switching to SRO repo: "
+  pushd "${SRO_PATH}"
+  git checkout perceptilabs
+  make undeploy &>/dev/null
+  make deploy
+  echo -n "Returning to SRO repo: "
+  popd
+
+  ###### Wait for the SRO to add GPUs
+  check_for_gpu(){
+    oc describe node ${node} | grep "nvidia.com/gpu"
+  }
+  response=$(check_for_gpu)
+  if [ -z "${response}" ]; then
+    echo -n "Waiting for GPUs (this will take a while) ..."
+    while [ -z "${response}" ]; do
+      sleep 1
+      echo -n "."
+      response=$(check_for_gpu)
+    done
+    echo "done"
+  else
+    echo "GPUs are attached"
+  fi
+
+  echo "You'll want to run \"$0 allocate\" to make sure the core pod is using GPUs"
+  exit 0
+
+elif [ "$1" == "allocate" ]; then
+
+  row=$(oc get perceptilabs.perceptilabs.com -A -o custom-columns=name:.metadata.name,namespace:.metadata.namespace --no-headers | head -n 1)
+  if [ -z "${row}" ]; then
+    echo "There are no installations of PerceptiLabs. This script needs one to work."
+    exit 1
+  fi
+
+  PL_NAMESPACE=$(echo "${row}" | awk '{print $2}')
+  INSTANCE_NAME=$(echo "${row}" | awk '{print $1}')
+
+  echo "PerceptiLabs namespace: ${PL_NAMESPACE}"
+  echo "Installed PerceptiLabs instance: ${INSTANCE_NAME}"
+
+  read -p "Inspect the installation to see whether you've requested enough GPUs. Edit it if needed [Press Enter to edit it] "
+  oc edit perceptilabs.perceptilabs.com ${INSTANCE_NAME} -n ${PL_NAMESPACE}
+
+  # wait for core pod to come up
+  check_pod(){
+    oc get pod -n ${PL_NAMESPACE} | grep "perceptilabs-core-.*Running"
+    return $?
+  }
+
+  sleep 2 # give it a chance to start the restart process
+  core_pod_row=$(check_pod)
+  if [ $? -ne 0 ]; then
+    echo -n "Waiting for core pod to start ..."
+    core_pod_row=$(check_pod)
+    while [ $? -ne 0 ]; do
+      sleep 5
+      echo -n "."
+      core_pod_row=$(check_pod)
+    done
+    echo "done"
+  fi
+
+  core_pod=$(echo "${core_pod_row}" | awk '{print $1}')
+
+  echo "Found core pod: ${core_pod} in namespace ${PL_NAMESPACE}"
+  echo "nvidia-smi output:"
+  oc exec -it ${core_pod} -n ${PL_NAMESPACE} -- nvidia-smi
+else
+
+  echo "USAGE: ${0} <show|up|down>"
+  exit 1
+  fi
+
