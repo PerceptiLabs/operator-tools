@@ -8,3 +8,6 @@ spec:
   namespace: REPLACE_NAMESPACE
   corePvc: perceptilabs-pvc
   coreGpus: REPLACE_GPU_COUNT
+  license_name: your-license-name
+  license_value: your-license-value
+
