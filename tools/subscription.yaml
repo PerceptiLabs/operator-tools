@@ -1,11 +1,11 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: perceptilabs-operator-REPLACE_PRODUCT_LEVEL
+  name: perceptilabs-operator
   namespace: REPLACE_NAMESPACE
 spec:
   channel: stable
-  name: perceptilabs-operator-REPLACE_PRODUCT_LEVEL-package
+  name: perceptilabs-operator-package
   source: perceptilabs-operators
   sourceNamespace: openshift-marketplace
   namespace: REPLACE_NAMESPACE

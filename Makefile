@@ -1,7 +1,6 @@
 # Targets of interest
 # deploy - the main target you use to deploy to 
-PRODUCT_LEVEL       ?= $(error "The PRODUCT_LEVEL environment variable isn't set")
-APP_REPOSITORY       = perceptilabs-operator-${PRODUCT_LEVEL}-package
+APP_REPOSITORY       = perceptilabs-operator-package
 APP_REGISTRY_API     = https://quay.io/cnr/api/v1/packages
 DOCKER_SERVER        = perceptilabs.azurecr.io
 DOCKER_USERNAME      = perceptilabs
@@ -9,7 +8,7 @@ REGISTRY             = quay.io
 REGISTRY_ACCOUNT     = perceptilabs
 SERVICEACCOUNT_NAME  = perceptilabs-operator-sa
 GPU_COUNT           ?= 0
-TEMPLATE_CMD         = @sed 's+REPLACE_PRODUCT_LEVEL+${PRODUCT_LEVEL}+g; s+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_SERVICEACCOUNT_NAME+${SERVICEACCOUNT_NAME}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g'
+TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_SERVICEACCOUNT_NAME+${SERVICEACCOUNT_NAME}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g'
 TOOLS_DIR            = tools
 
 require-%:
