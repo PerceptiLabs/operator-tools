@@ -17,7 +17,8 @@ $ NAMESPACE=<your-namespace> make clean-cluster
 
 ## To provision GPU machines in the cluster
 1. Create a GPU-enabled machineset. Instructions are [here](https://blog.openshift.com/creating-a-gpu-enabled-node-with-openshift-4-2-in-amazon-ec2/)
-1. Add a gpu count to the new machineset: `oc label machineset <machineset-name> gpus=<num-gpus>`
+1. Add a gpu count label to the new machineset: `oc label machineset <machineset-name> gpus=<num-gpus>`
+1. Add an availability zone label to the new machineset: `oc label machineset <machineset-name> az=<availability zone>`
 1. Scale up one GPU-enabled node:
    ```
    oc scale --namespace <machineset-namesapce> <machineset-name> --replicas=1
@@ -61,10 +62,7 @@ oc scale machinesets --namespace <machineset-namespace> --selector 'gpus' --repl
 
 ## To start a machine labeled as gpu
 
+For example, to start a 1-gpu machineset in us-east-2a:
 ```
-# Find a machineset to start:
-oc get machinesets -A --show-labels --selector="gpus"
-
-# Start it
-oc scale machinesets -n <machineset-namespace> --replicas=1 <machineset-name>
+oc scale machinesets.machine.openshift.io -n openshift-machine-api --selector="gpus=1,az=us-east-2a" --replicas=1
 ``
