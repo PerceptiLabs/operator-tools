@@ -15,7 +15,7 @@ require-%:
 	@: $(if ${${*}},,$(error You must pass the $* environment variable))
 
 install-custom-operator: ## Install the custom OperatorSource from the repos to the cluster
-	@${TOOLS_DIR}/pre-deploy ${APP_REGISTRY_API}/${REGISTRY_ACCOUNT}/${APP_REPOSITORY}
+	@${TOOLS_DIR}/check-quay ${APP_REGISTRY_API}/${REGISTRY_ACCOUNT}/${APP_REPOSITORY}
 	@oc apply -f ${TOOLS_DIR}/operator-source.yaml
 	@${TOOLS_DIR}/wait_for_log "openshift-marketplace" "perceptilabs-operators-" "serving registry" "perceptilabs-operators" &>/dev/null
 	@echo operator pod is running
