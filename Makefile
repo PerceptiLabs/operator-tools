@@ -36,16 +36,16 @@ subscription: install-custom-operator persistentvolume namespace serviceaccount
 instance: subscription ## Install perceptilabs in NAMESPACE
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/start-instance.yaml | oc apply -f -
 
-route: frontend-pod ## Get the frontend route for perceptilabs in NAMESPACE
+frontend-route: frontend-pod ## Get the frontend route for perceptilabs in NAMESPACE
 	@$(eval FRONTEND_URL="http://$(shell ${TOOLS_DIR}/get_live_route ${NAMESPACE} perceptilabs-frontend)")
 	$(info Route is serving at ${FRONTEND_URL})
 
 core-pod: instance
-	@"${TOOLS_DIR}/wait_for_log" "${NAMESPACE}" "perceptilabs-core-" "listen" "core"
+	@${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-core- | tail -n 1
 	@$(eval CORE_POD=$(shell ${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-core- | tail -n 1))
 
 core-route: core-pod
-	@${TOOLS_DIR}/get_live_route ${NAMESPACE} perceptilabs-core
+	@$(eval CORE_URL="http://$(shell ${TOOLS_DIR}/get_live_route ${NAMESPACE} perceptilabs-core)")
 
 frontend-pod: instance
 	@${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-frontend- | tail -n 1
@@ -53,9 +53,9 @@ frontend-pod: instance
 valid-storage: core-pod
 	@oc cp README.md --namespace=${NAMESPACE} ${CORE_POD}:/mnt/plabs --container=core
 
-deploy: valid-storage route ## Deploy and check the perceptilabs operator to the cluster and print the frontend route
+deploy: valid-storage core-route frontend-route ## Deploy and check the perceptilabs operator to the cluster and print the frontend route
 
-deploy-for-test: route core-route
+deploy-for-test: frontend-route core-route
 	$(info copying test data to ${CORE_POD})
 	@ls test_data | xargs -L 1 -I {} oc cp test_data/{} --namespace ${NAMESPACE} ${CORE_POD}:/mnt/plabs --container=core
 	@open ${FRONTEND_URL}
@@ -76,5 +76,5 @@ clean-cluster: clean-namespace clean-storage ## Remove all perceptilabs-related 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: clean-cluster clean-namespace clean-storage deploy install-custom-operator instance persistentvolume route
+.PHONY: clean-cluster clean-namespace clean-storage deploy install-custom-operator instance persistentvolume frontend-route
 
