@@ -34,7 +34,11 @@ subscription: install-custom-operator persistentvolume namespace serviceaccount
 	@"${TOOLS_DIR}/wait_for_log" "${NAMESPACE}" "perceptilabs-operator-" "starting to serve" "operator"
 
 instance: subscription ## Install perceptilabs in NAMESPACE
-	@${TEMPLATE_CMD} ${TOOLS_DIR}/start-instance.yaml | oc apply -f -
+ifeq (${GPU_COUNT}, 0)
+	@${TEMPLATE_CMD} ${TOOLS_DIR}/start-instance-demo.yaml | oc apply -f -
+else
+	@${TEMPLATE_CMD} ${TOOLS_DIR}/start-instance-gpu.yaml | oc apply -f -
+endif
 
 frontend-route: frontend-pod ## Get the frontend route for perceptilabs in NAMESPACE
 	@$(eval FRONTEND_URL="http://$(shell ${TOOLS_DIR}/get_live_route ${NAMESPACE} perceptilabs-frontend)")

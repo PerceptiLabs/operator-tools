@@ -1,0 +1,9 @@
+apiVersion: perceptilabs.com/v1
+kind: PerceptiLabs
+metadata:
+  name: example-perceptilabs
+  namespace: REPLACE_NAMESPACE
+spec:
+  serviceAccountName: REPLACE_SERVICEACCOUNT_NAME
+  namespace: REPLACE_NAMESPACE
+  corePvc: perceptilabs-pvc
