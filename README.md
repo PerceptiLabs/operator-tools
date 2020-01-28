@@ -65,4 +65,17 @@ oc scale machinesets --namespace <machineset-namespace> --selector 'gpus' --repl
 For example, to start a 1-gpu machineset in us-east-2a:
 ```
 oc scale machinesets.machine.openshift.io -n openshift-machine-api --selector="gpus=1,az=us-east-2a" --replicas=1
-``
+```
+
+Wait for the SRO to recognize the GPUs:
+```
+oc describe nodes | grep nvidia.com/gpu
+```
+Note that it'll take a while since it needs to build drivers from source.
+
+If it takes more than 15 minutes, you can try restarting the SRO:
+```
+oc scale deployment -n openshift-sro special-resource-operator --replicas=0
+oc scale deployment -n openshift-sro special-resource-operator --replicas=1
+```
+... and then watch for it to recognize the GPUs
