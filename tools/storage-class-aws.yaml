@@ -10,17 +10,3 @@ parameters:
   type: gp2
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
----
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: perceptilabs-pvc
-  namespace: REPLACE_NAMESPACE
-spec:
-  storageClassName: perceptilabs-example-sc
-  volumeMode: Filesystem
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 50Gi

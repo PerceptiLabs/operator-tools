@@ -10,6 +10,7 @@ SERVICEACCOUNT_NAME  = perceptilabs-operator-sa
 GPU_COUNT           ?= 0
 TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_SERVICEACCOUNT_NAME+${SERVICEACCOUNT_NAME}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g'
 TOOLS_DIR            = tools
+CLUSTER_PROVIDER     = $(shell oc get nodes -o custom-columns=x:spec.providerID --no-headers | cut -d: -f1 | uniq)
 
 require-%:
 	@: $(if ${${*}},,$(error You must pass the $* environment variable))
@@ -27,7 +28,8 @@ serviceaccount: require-SERVICEACCOUNT_NAME
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/sa.yaml | oc apply -f -
 
 persistentvolume: namespace ## Create the persistent volume needed for core
-	@${TEMPLATE_CMD} ${TOOLS_DIR}/persistentvolume.yaml | oc apply -f -
+	@${TEMPLATE_CMD} ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml | oc apply -f -
+	@${TEMPLATE_CMD} ${TOOLS_DIR}/persistentvolumeclaim.yaml | oc apply -f -
 
 subscription: install-custom-operator persistentvolume namespace serviceaccount
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/subscription.yaml | oc apply -f -
@@ -68,7 +70,8 @@ clean-namespace: require-NAMESPACE ## Remove the installed namespace and everyth
 	${TEMPLATE_CMD} ${TOOLS_DIR}/namespace.yaml | oc delete --ignore-not-found -f -
 
 clean-storage: require-NAMESPACE ## Remove the persistent volume
-	${TEMPLATE_CMD} ${TOOLS_DIR}/persistentvolume.yaml | oc delete --ignore-not-found -f -
+	${TEMPLATE_CMD} ${TOOLS_DIR}/persistentvolumeclaim.yaml | oc delete --ignore-not-found -f -
+	${TEMPLATE_CMD} ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml | oc delete --ignore-not-found -f -
 
 # TODO: this is a bit clunky since you have to delete one (and only one) namespace along with the operator
 clean-cluster: clean-namespace clean-storage ## Remove all perceptilabs-related objects from the cluster
