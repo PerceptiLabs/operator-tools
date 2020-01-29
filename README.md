@@ -16,6 +16,11 @@ $ NAMESPACE=<your-namespace> make clean-cluster
 ```
 
 ## To provision GPU machines in the cluster
+1. Find a region where your desired machine is available. For example:  
+   ```
+   az vm list-skus --resource-type virtualMachines --output table
+   ```  
+   will return a table of virtual machine types available in various Azure regions.
 1. Create a GPU-enabled machineset. Instructions are [here](https://blog.openshift.com/creating-a-gpu-enabled-node-with-openshift-4-2-in-amazon-ec2/)
 1. Add a gpu count label to the new machineset: `oc label machineset <machineset-name> gpus=<num-gpus>`
 1. Add an availability zone label to the new machineset: `oc label machineset <machineset-name> az=<availability zone>`
