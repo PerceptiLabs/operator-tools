@@ -1,14 +1,16 @@
 # Targets of interest
 # deploy - the main target you use to deploy to 
-APP_REPOSITORY       = perceptilabs-operator-package
+TRIAL                = #-trial
+APP_NAME             = perceptilabs-operator${TRIAL}
+APP_REPOSITORY       = ${APP_NAME}-package
 APP_REGISTRY_API     = https://quay.io/cnr/api/v1/packages
 DOCKER_SERVER        = perceptilabs.azurecr.io
 DOCKER_USERNAME      = perceptilabs
 REGISTRY             = quay.io
 REGISTRY_ACCOUNT     = perceptilabs
-SERVICEACCOUNT_NAME  = perceptilabs-operator-sa
+SERVICEACCOUNT_NAME  = default
 GPU_COUNT           ?= 0
-TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_SERVICEACCOUNT_NAME+${SERVICEACCOUNT_NAME}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g'
+TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_SERVICEACCOUNT_NAME+${SERVICEACCOUNT_NAME}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g; s+REPLACE_REPO_NAME+${APP_REPOSITORY}+g; s+REPLACE_SUBSCRIPTION_NAME+${APP_NAME}+g'
 TOOLS_DIR            = tools
 CLUSTER_PROVIDER     = $(shell oc get nodes -o custom-columns=x:spec.providerID --no-headers | cut -d: -f1 | uniq)
 
