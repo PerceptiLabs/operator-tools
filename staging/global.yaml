@@ -1,0 +1,17 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: REPLACE_NAMESPACE
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: perceptilabs-staging01-sc
+  annotations:
+    description: Storage for PerceptiLabs Modeling Staging01
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  fsType: ext4
+  type: gp2
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
