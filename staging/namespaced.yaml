@@ -75,6 +75,13 @@ spec:
     kind: Service
     name: perceptilabs-core
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: core-url
+data:
+  core_url: perceptilabs-core-REPLACE_NAMESPACE.apps.os01.perceptilabshosting.com
+---
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
@@ -97,9 +104,14 @@ spec:
       - name: frontend
         image: perceptilabs.azurecr.io/frontend:REPLACE_TAG
         imagePullPolicy: IfNotPresent
-        env:
-          - name: CORE_URL
-            value: perceptilabs-core-REPLACE_NAMESPACE.apps.os01.perceptilabshosting.com
+        volumeMounts:
+          - name: core-url-volume
+            mountPath: /var/www/html/static/core_url
+            subPath: core_url
+      volumes:
+          - name: core-url-volume
+            configMap:
+              name: core-url
       imagePullSecrets:
         - name: pl-pull
 ---

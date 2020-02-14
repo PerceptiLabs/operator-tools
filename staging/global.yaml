@@ -2,6 +2,8 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: REPLACE_NAMESPACE
+  labels:
+    staging: "true"
 ---
 kind: StorageClass
 apiVersion: storage.k8s.io/v1

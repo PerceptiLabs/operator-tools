@@ -9,28 +9,34 @@ fi
 NAMESPACE=$1
 TAG=$2
 
-check_var(){
-  if [ -z "${!1}" ]; then
-    echo "The required $1 environment variable isn't set."
-    exit 1
-  fi
-}
-check_var PERCEPTILABS_AZURECR_PWD || { exit 1; }
-check_var AWS_OC01_USR || { exit 1; }
-check_var AWS_OC01_PWD || { exit 1; }
-
 DIR=$(dirname $0)
 SED_STR="s+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_TAG+${TAG}+g"
-oc login https://api.os01.perceptilabshosting.com:6443 --username="${AWS_OC01_USR}" --password="${AWS_OC01_PWD}" || { exit 1; }
+
+# verify the cluster
+CTXT=$(oc config current-context | cut -d/ -f2)
+read -s -p "Deploying to ${CTXT}. Ok? [Y/n]" RESPONSE
+if [ "${RESPONSE}" == "n" ]; then exit 0; fi
+
+# oc login https://api.os01.perceptilabshosting.com:6443 --username="${AWS_OC01_USR}" --password="${AWS_OC01_PWD}" || { exit 1; }
 sed "${SED_STR}" ${DIR}/global.yaml | oc apply -f - || { exit 1; }
 
-# you can't update a secret idempotently with oc create secret. Just delete and recreate.
-oc delete secret pl-pull --namespace ${NAMESPACE} --ignore-not-found
-oc create secret docker-registry pl-pull \
-  --docker-server=perceptilabs.azurecr.io \
-  --docker-username=perceptilabs \
-  --docker-password=${PERCEPTILABS_AZURECR_PWD} \
-  --namespace ${NAMESPACE} || { exit 1; }
+# if it doesn't already exist, then make the pull secret
+oc get secrets -n staging02 pl-pull &>/dev/null
+if [ $? -ne 0 ]; then
+  if [ -z "${PERCEPTILABS_AZURECR_PWD}" ]; then
+    echo "The required PERCEPTILABS_AZURECR_PWD environment variable isn't set."
+    exit 1
+  fi
+
+  # you can't update a secret idempotently with oc create secret. Just delete and recreate.
+  oc delete secret pl-pull --namespace ${NAMESPACE} --ignore-not-found
+  oc create secret docker-registry pl-pull \
+    --docker-server=perceptilabs.azurecr.io \
+    --docker-username=perceptilabs \
+    --docker-password=${PERCEPTILABS_AZURECR_PWD} \
+    --namespace ${NAMESPACE} || { exit 1; }
+fi
 
 sed "${SED_STR}" ${DIR}/namespaced.yaml | oc apply -n ${NAMESPACE} -f - || { exit 1; }
-
+url=$(oc get routes.route.openshift.io --namespace ${NAMESPACE} perceptilabs-frontend --output="custom-columns=url:spec.host" --no-headers)
+echo "Serving at ${url}"

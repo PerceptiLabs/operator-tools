@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+if [ $# -ne 2 ]; then
+  echo "USAGE: $0 <namespace> <file to upload>"
+  exit 1
+fi
+
+NAMESPACE=$1
+FILE=$2
+
+core_pod=$(oc get pod -n ${NAMESPACE} --selector="app.kubernetes.io/name=perceptilabs-core" -o name | cut -d/ -f2)
+if [ $? -ne 0 ]; then
+  echo "There's no core pod in namespace ${NAMESPACE}"
+  exit 1
+fi
+echo -n "Uploading ${FILE} to ${core_pod}:/mnt/plabs/ ..."
+oc cp "${FILE}" --namespace ${NAMESPACE} ${core_pod}:/mnt/plabs --container=core
+echo "done"

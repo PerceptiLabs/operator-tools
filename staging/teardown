@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-if [ $# -ne 1 ]; then
-  echo "USAGE: $0 <namespace>"
-  exit 1
-fi
-
-oc delete namespace $1 --ignore-not-found
