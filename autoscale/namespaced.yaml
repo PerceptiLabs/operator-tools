@@ -1,0 +1,91 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: redis
+          ports:
+            - containerPort: 6379
+              protocol: TCP
+          imagePullPolicy: Always
+          image: 'quay.io/perceptilabs/redis:latest'
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: redis
+spec:
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 6379
+  selector:
+    app: redis
+  type: ClusterIP
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: hashbench
+  labels:
+    app: hashbench
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hashbench
+  template:
+    metadata:
+      labels:
+        app: hashbench
+    spec:
+      containers:
+        - name: hashbench
+          env:
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: '80'
+          image: quay.io/perceptilabs/hashbench
+          resources:
+            limits:
+              cpu: 100m
+          imagePullPolicy: Always
+      restartPolicy: Always
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+---
+kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2beta1
+metadata:
+  name: hashbench-scaler
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    name: hashbench
+    apiVersion: apps/v1
+  minReplicas: 1
+  maxReplicas: 1
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 50
