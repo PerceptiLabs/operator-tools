@@ -8,9 +8,8 @@ DOCKER_SERVER        = perceptilabs.azurecr.io
 DOCKER_USERNAME      = perceptilabs
 REGISTRY             = quay.io
 REGISTRY_ACCOUNT     = perceptilabs
-SERVICEACCOUNT_NAME  = default
 GPU_COUNT           ?= 0
-TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_SERVICEACCOUNT_NAME+${SERVICEACCOUNT_NAME}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g; s+REPLACE_REPO_NAME+${APP_REPOSITORY}+g; s+REPLACE_SUBSCRIPTION_NAME+${APP_NAME}+g'
+TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g; s+REPLACE_REPO_NAME+${APP_REPOSITORY}+g; s+REPLACE_SUBSCRIPTION_NAME+${APP_NAME}+g'
 TOOLS_DIR            = tools
 CLUSTER_PROVIDER     = $(shell oc get nodes -o custom-columns=x:spec.providerID --no-headers | cut -d: -f1 | uniq)
 
@@ -26,14 +25,11 @@ install-custom-operator: ## Install the custom OperatorSource from the repos to 
 namespace: require-NAMESPACE
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/namespace.yaml | oc apply -f -
 
-serviceaccount: require-SERVICEACCOUNT_NAME
-	@${TEMPLATE_CMD} ${TOOLS_DIR}/sa.yaml | oc apply -f -
-
 persistentvolume: namespace ## Create the persistent volume needed for core
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml | oc apply -f -
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/persistentvolumeclaim.yaml | oc apply -f -
 
-subscription: install-custom-operator persistentvolume namespace serviceaccount
+subscription: install-custom-operator persistentvolume namespace
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/subscription.yaml | oc apply -f -
 	@"${TOOLS_DIR}/wait_for_log" "${NAMESPACE}" "perceptilabs-operator-" "starting to serve" "operator"
 
