@@ -4,6 +4,7 @@ metadata:
   name: REPLACE_NAMESPACE-operatorgroup
   namespace: REPLACE_NAMESPACE
 spec:
+  serviceAccountName: perceptilabs-operator
   targetNamespaces:
   - REPLACE_NAMESPACE
 ---

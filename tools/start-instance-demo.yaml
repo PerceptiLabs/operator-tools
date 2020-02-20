@@ -2,7 +2,5 @@ apiVersion: perceptilabs.com/v1
 kind: PerceptiLabs
 metadata:
   name: example-perceptilabs
-  namespace: REPLACE_NAMESPACE
 spec:
-  namespace: REPLACE_NAMESPACE
   corePvc: perceptilabs-pvc

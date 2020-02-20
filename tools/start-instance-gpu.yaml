@@ -2,9 +2,7 @@ apiVersion: perceptilabs.com/v1
 kind: PerceptiLabs
 metadata:
   name: example-perceptilabs
-  namespace: REPLACE_NAMESPACE
 spec:
-  namespace: REPLACE_NAMESPACE
   corePvc: perceptilabs-pvc
   coreGpus: 1
   license_name: a8029b42-1b04-49cc-919b-97dbd66f903a

@@ -4,9 +4,6 @@ TRIAL                = #-trial
 APP_NAME             = perceptilabs-operator${TRIAL}
 APP_REPOSITORY       = ${APP_NAME}-package
 APP_REGISTRY_API     = https://quay.io/cnr/api/v1/packages
-DOCKER_SERVER        = perceptilabs.azurecr.io
-DOCKER_USERNAME      = perceptilabs
-REGISTRY             = quay.io
 REGISTRY_ACCOUNT     = perceptilabs
 GPU_COUNT           ?= 0
 TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g; s+REPLACE_REPO_NAME+${APP_REPOSITORY}+g; s+REPLACE_SUBSCRIPTION_NAME+${APP_NAME}+g'
@@ -26,8 +23,8 @@ namespace: require-NAMESPACE
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/namespace.yaml | oc apply -f -
 
 persistentvolume: namespace ## Create the persistent volume needed for core
-	@${TEMPLATE_CMD} ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml | oc apply -f -
-	@${TEMPLATE_CMD} ${TOOLS_DIR}/persistentvolumeclaim.yaml | oc apply -f -
+	@oc apply -f ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml
+	@oc apply -n ${NAMESPACE} -f ${TOOLS_DIR}/persistentvolumeclaim.yaml
 
 subscription: install-custom-operator persistentvolume namespace
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/subscription.yaml | oc apply -f -
@@ -35,9 +32,9 @@ subscription: install-custom-operator persistentvolume namespace
 
 instance: subscription ## Install perceptilabs in NAMESPACE
 ifeq (${GPU_COUNT}, 0)
-	@${TEMPLATE_CMD} ${TOOLS_DIR}/start-instance-demo.yaml | oc apply -f -
+	@oc apply --namespace=${NAMESPACE} -f ${TOOLS_DIR}/start-instance-demo.yaml
 else
-	@${TEMPLATE_CMD} ${TOOLS_DIR}/start-instance-gpu.yaml | oc apply -f -
+	@oc apply --namespace=${NAMESPACE} -f ${TOOLS_DIR}/start-instance-gpu.yaml
 endif
 
 frontend-route: frontend-pod ## Get the frontend route for perceptilabs in NAMESPACE
@@ -57,23 +54,27 @@ frontend-pod: instance
 valid-storage: core-pod
 	@oc cp README.md --namespace=${NAMESPACE} ${CORE_POD}:/mnt/plabs --container=core
 
-deploy: valid-storage core-route frontend-route ## Deploy and check the perceptilabs operator to the cluster and print the frontend route
+deploy-from-quay: valid-storage core-route frontend-route ## Deploy and check the perceptilabs operator to the cluster and print the frontend route
 
-deploy-for-test: frontend-route core-route
+deploy-for-test: frontend-route core-route ## deploy from quay and upload MNIST data for testing
 	$(info copying test data to ${CORE_POD})
-	@ls test_data | xargs -L 1 -I {} oc cp test_data/{} --namespace ${NAMESPACE} ${CORE_POD}:/mnt/plabs --container=core
+	@ls test_data | xargs -L 1 -I {} oc cp test_data/{} --namespace=${NAMESPACE} ${CORE_POD}:/mnt/plabs --container=core
 	@open ${FRONTEND_URL}
+
+deploy-from-operatorhub: namespace ## Deploy from the operatorhub
+	@oc apply --namespace=${NAMESPACE} -f ${TOOLS_DIR}/hub-prereqs.yaml
+	@read -p "Now you can go to the OperatorHub and install PerceptiLabs to ${NAMESPACE}."
 
 clean-namespace: require-NAMESPACE ## Remove the installed namespace and everything in it
 	${TEMPLATE_CMD} ${TOOLS_DIR}/namespace.yaml | oc delete --ignore-not-found -f -
 
 clean-storage: require-NAMESPACE ## Remove the persistent volume
-	${TEMPLATE_CMD} ${TOOLS_DIR}/persistentvolumeclaim.yaml | oc delete --ignore-not-found -f -
-	${TEMPLATE_CMD} ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml | oc delete --ignore-not-found -f -
+	@oc delete --ignore-not-found --namespace=${NAMESPACE} -f ${TOOLS_DIR}/persistentvolumeclaim.yaml
+	@oc delete --ignore-not-found -f ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml
 
 # TODO: this is a bit clunky since you have to delete one (and only one) namespace along with the operator
 clean-cluster: clean-namespace clean-storage ## Remove all perceptilabs-related objects from the cluster
-	@${TEMPLATE_CMD} ${TOOLS_DIR}/operator-source.yaml | oc delete --ignore-not-found -f -
+	@oc delete --ignore-not-found -f ${TOOLS_DIR}/operator-source.yaml
 	@oc delete customresourcedefinitions perceptilabs.perceptilabs.com --ignore-not-found
 
 # script-kiddied from https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
