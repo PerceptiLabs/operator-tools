@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+if [ $# -ne 1 ]; then
+  echo "USAGE: $0 <namespace>"
+  exit 1
+fi
+
+oc label namespace $1 claimed-

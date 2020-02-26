@@ -1,42 +1,48 @@
 #!/usr/bin/env bash
 
 
-if [ $# -ne 2 ]; then
-  echo "USAGE: $0 <namespace> <image tag>"
+if [ $# -ne 3 ]; then
+  echo "USAGE: $0 <namespace> <image tag> <my name>"
   exit 1
 fi
 
 NAMESPACE=$1
 TAG=$2
+NAME=$3
+WITH_DATE=$(date "+${NAME}-%Y%m%M")
 
-DIR=$(dirname $0)
 SED_STR="s+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_TAG+${TAG}+g"
 
+DIR=$(dirname $0)
+
+# claim the namespace
+${DIR}/claim "${NAMESPACE}" "${WITH_DATE}" || { exit 1; }
+
 # verify the cluster
-CTXT=$(kubectl config current-context | cut -d/ -f2)
+CTXT=$(oc config current-context | cut -d/ -f2)
 read -s -p "Deploying to ${CTXT}. Ok? [Y/n]" RESPONSE
 echo
 if [ "${RESPONSE}" == "n" ]; then exit 0; fi
 
-sed "${SED_STR}" ${DIR}/global.yaml | kubectl apply -f - || { exit 1; }
+sed "${SED_STR}" ${DIR}/global.yaml | oc apply -f - || { exit 1; }
 
 # if it doesn't already exist, then make the pull secret
-kubectl get secrets -n staging02 pl-pull &>/dev/null
+oc get secrets -n ${NAMESPACE} pl-pull &>/dev/null
 if [ $? -ne 0 ]; then
   if [ -z "${PERCEPTILABS_AZURECR_PWD}" ]; then
     echo "The required PERCEPTILABS_AZURECR_PWD environment variable isn't set."
     exit 1
   fi
 
-  # you can't update a secret idempotently with kubectl create secret. Just delete and recreate.
-  kubectl delete secret pl-pull --namespace ${NAMESPACE} --ignore-not-found
-  kubectl create secret docker-registry pl-pull \
+  # you can't update a secret idempotently with oc create secret. Just delete and recreate.
+  oc delete secret pl-pull --namespace ${NAMESPACE} --ignore-not-found
+  oc create secret docker-registry pl-pull \
     --docker-server=perceptilabs.azurecr.io \
     --docker-username=perceptilabs \
     --docker-password=${PERCEPTILABS_AZURECR_PWD} \
     --namespace ${NAMESPACE} || { exit 1; }
 fi
 
-sed "${SED_STR}" ${DIR}/namespaced.yaml | kubectl apply --validate=false -n ${NAMESPACE} -f - || { exit 1; }
-url=$(kubectl get routes.route.openshift.io --namespace ${NAMESPACE} perceptilabs-frontend --output="custom-columns=url:spec.host" --no-headers)
+sed "${SED_STR}" ${DIR}/namespaced.yaml | oc apply --validate=false -n ${NAMESPACE} -f - || { exit 1; }
+url=$(oc get routes.route.openshift.io --namespace ${NAMESPACE} perceptilabs-frontend --output="custom-columns=url:spec.host" --no-headers)
 echo "Serving at ${url}"
