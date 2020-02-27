@@ -23,6 +23,7 @@ namespace: require-NAMESPACE
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/namespace.yaml | oc apply -f -
 
 persistentvolume: namespace ## Create the persistent volume needed for core
+	$(info Creating storage class for cluster provider "${CLUSTER_PROVIDER}")
 	@oc apply -f ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml
 	@oc apply -n ${NAMESPACE} -f ${TOOLS_DIR}/persistentvolumeclaim.yaml
 
