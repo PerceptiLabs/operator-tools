@@ -9,14 +9,13 @@ fi
 NAMESPACE=$1
 TAG=$2
 NAME=$3
-WITH_DATE=$(date "+${NAME}-%Y%m%M")
 
 SED_STR="s+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_TAG+${TAG}+g"
 
 DIR=$(dirname $0)
 
 # claim the namespace
-${DIR}/claim "${NAMESPACE}" "${WITH_DATE}" || { exit 1; }
+${DIR}/claim "${NAMESPACE}" "${NAME}" || { exit 1; }
 
 # verify the cluster
 CTXT=$(oc config current-context | cut -d/ -f2)

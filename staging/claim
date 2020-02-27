@@ -5,5 +5,5 @@ if [ $# -ne 2 ]; then
   exit 1
 fi
 
-echo oc label namespace $1 claimed="$2" || { exit 1; }
-oc label namespace $1 claimed="$2" || { exit 1; }
+WITH_DATE=$(date "+$2-%Y%m%d")
+oc label namespace $1 claimed="${WITH_DATE}" || { exit 1; }
