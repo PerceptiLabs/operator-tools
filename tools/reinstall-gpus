@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+oc cluster-info > /dev/null
+if [ $? -ne 0 ]; then
+  echo "Couldn't get cluster info. Try logging in again"
+  exit 1
+fi
+
+# remove any gpu operator from the cluster
+helm list | grep gpu-operator | awk '{print $1}' | xargs helm uninstall
+
+# reinstall the repo
+helm repo remove nvidia
+helm repo add nvidia https://nvidia.github.io/gpu-operator
+
+# install the gpu operator again
+helm install --devel https://nvidia.github.io/gpu-operator/gpu-operator-1.0.0.tgz --set platform.openshift=true,operator.defaultRuntime=crio,nfd.enabled=false --wait --generate-name
+
