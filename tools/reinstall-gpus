@@ -6,13 +6,56 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+check_node_10de(){
+  oc describe nodes | grep -q pci-10de.present=true
+  return $?
+}
+
+check_namespace(){
+  oc get namespaces | grep -q gpu-operator
+  return $?
+}
+
+check_node_has_gpus(){
+  oc describe nodes | grep -q nvidia.com/gpu:
+  return $?
+}
+
+echo -n "Waiting for a GPU node to start ..."
+check_node_10de
+while [ $? -ne 0 ]; do
+  sleep 5
+  echo -n "."
+  check_node_10de
+done
+echo "done"
+
 # remove any gpu operator from the cluster
 helm list | grep gpu-operator | awk '{print $1}' | xargs helm uninstall
+
+echo -n "Waiting for gpu-operator to be removed from the cluster ..."
+check_namespace
+while [ $? -eq 0 ]; do
+  sleep 5
+  echo -n "."
+  check_namespace
+done
+echo "done"
 
 # reinstall the repo
 helm repo remove nvidia
 helm repo add nvidia https://nvidia.github.io/gpu-operator
 
 # install the gpu operator again
+echo "Installing the operator"
 helm install --devel https://nvidia.github.io/gpu-operator/gpu-operator-1.0.0.tgz --set platform.openshift=true,operator.defaultRuntime=crio,nfd.enabled=false --wait --generate-name
+
+echo -n "Waiting for a GPU node to be annotated ..."
+check_node_has_gpus
+while [ $? -ne 0 ]; do
+  sleep 5
+  echo -n "."
+  check_node_has_gpus
+done
+echo "done"
 
