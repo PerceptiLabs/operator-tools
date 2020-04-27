@@ -35,7 +35,7 @@ instance: subscription ## Install perceptilabs in NAMESPACE
 ifeq (${GPU_COUNT}, 0)
 	@oc apply --namespace=${NAMESPACE} -f ${TOOLS_DIR}/start-instance-demo.yaml
 else
-	@oc apply --namespace=${NAMESPACE} -f ${TOOLS_DIR}/start-instance-gpu.yaml
+	@${TEMPLATE_CMD} ${TOOLS_DIR}/start-instance-gpu.yaml | oc apply -f -
 endif
 
 frontend-route: frontend-pod ## Get the frontend route for perceptilabs in NAMESPACE

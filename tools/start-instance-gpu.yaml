@@ -2,9 +2,10 @@ apiVersion: perceptilabs.com/v1
 kind: PerceptiLabs
 metadata:
   name: example-perceptilabs
+  namespace: REPLACE_NAMESPACE
 spec:
   corePvc: perceptilabs-pvc
-  coreGpus: 1
+  coreGpus: REPLACE_GPU_COUNT
   license_name: a8029b42-1b04-49cc-919b-97dbd66f903a
   license_value: gAAAAABeLwu2zzbXxy4Hn3SDxc2w8WZf3IznkeUyDqpJdziEeaO8r2UdnbeB_99wzRFGvanXNvVTF56DNOoQGs5lDltdL5doqaAmTvhGEsX2v1dqFw5j4UK-yofGuY5S3q2fetaNFGyu
 
