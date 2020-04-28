@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ]; then
+  echo "USAGE $0 <namespace>"
+  exit 1
+fi
+
+NS="$1"
+LABEL=app.kubernetes.io/name=perceptilabs-core
+pod=$(oc get pod -n "${NS}" -l ${LABEL} -o name | cut -d'/' -f 2);
+
+if [ -z "${pod}" ]; then
+  echo "no pod"
+else
+  oc exec -it ${pod} -n "${NS}" bash
+fi
+

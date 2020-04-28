@@ -78,6 +78,14 @@ clean-cluster: clean-namespace clean-storage ## Remove all perceptilabs-related 
 	@oc delete --ignore-not-found -f ${TOOLS_DIR}/operator-source.yaml
 	@oc delete customresourcedefinitions perceptilabs.perceptilabs.com --ignore-not-found
 
+remove-nvidia:
+	@${TOOLS_DIR}/remove-nvidia
+
+deploy-nvidia:
+	@${TOOLS_DIR}/deploy-nvidia
+
+redeploy-nvidia: remove-nvidia deploy-nvidia
+
 # script-kiddied from https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .DEFAULT_GOAL := help
 help:

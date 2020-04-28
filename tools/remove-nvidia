@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+check_namespace(){
+  oc get namespaces | grep -q gpu-operator
+  return $?
+}
+
+echo -n "Removing any gpu operator from the cluster ... "
+helm list | grep gpu-operator | awk '{print $1}' | xargs helm uninstall
+echo "done"
+
+echo -n "Waiting for gpu-operator to be removed from the cluster ..."
+check_namespace
+while [ $? -eq 0 ]; do
+  sleep 5
+  echo -n "."
+  check_namespace
+done
+echo "done"
+
+# reinstall the repo
+helm repo remove nvidia
+echo "Nvidia repo removed from helm"

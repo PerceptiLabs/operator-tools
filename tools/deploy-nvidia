@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+REPO=https://nvidia.github.io/gpu-operator
+PACKAGE=https://nvidia.github.io/gpu-operator/gpu-operator-1.0.0.tgz
+
+check_node_10de(){
+  oc describe nodes | grep -q pci-10de.present=true
+  return $?
+}
+
+echo -n "Waiting for a GPU node to start ..."
+check_node_10de
+while [ $? -ne 0 ]; do
+  sleep 5
+  echo -n "."
+  check_node_10de
+done
+echo "done"
+
+# install the repo
+helm repo add nvidia ${REPO}
+
+# install the gpu operator again
+echo "Installing the operator"
+helm install --devel ${PACKAGE} --set platform.openshift=true,operator.defaultRuntime=crio,nfd.enabled=false --wait --generate-name
+
+check_node_has_gpus(){
+  oc describe nodes | grep -q nvidia.com/gpu:
+  return $?
+}
+
+echo -n "Waiting for a GPU node to be annotated ..."
+check_node_has_gpus
+while [ $? -ne 0 ]; do
+  sleep 5
+  echo -n "."
+  check_node_has_gpus
+done
+echo "done"
+
