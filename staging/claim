@@ -5,5 +5,16 @@ if [ $# -ne 2 ]; then
   exit 1
 fi
 
-echo oc label namespace $1 claimed="$2" || { exit 1; }
+oc get namespace $1 &>/dev/null
+if [ $? -ne 0 ]; then
+  read -s -p "Namespace $1 doesn't exist. Create it? [Y/n] " RESPONSE
+  if [ -z "${RESPONSE}" ] || [ "${RESPONSE}" == "y" ]; then
+    echo
+    oc create namespace $1
+  else
+    echo "Ok. Stopped."
+    exit 1
+  fi
+fi
+
 oc label namespace $1 claimed="$2" || { exit 1; }

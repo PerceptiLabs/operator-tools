@@ -17,6 +17,20 @@ This is for deploying PerceptiLabs Modeling to a staging namespace in an OpenShi
 ./list-staging-namespaces
 ```
 
+## Claiming a staging namespace
+
+```
+./claim <namespace> <your name>
+```
+
+## Unclaim
+
+When you're done using the staging environment, remove your claim on it with:
+
+```
+./unclaim <namespace>
+```
+
 ## Deployment
 
 1. If you haven't already, log in to the cluster with `oc login <cluster>`.
@@ -26,10 +40,3 @@ This is for deploying PerceptiLabs Modeling to a staging namespace in an OpenShi
 1. Run `./setup <namespace> <modeling docker tag> <your name>` . It will tell you the frontend URL at the end.
 1. Copy test data to the staging environment: `./upload_file <namespace> <the file>`
 
-## Release
-
-When you're done using the staging environment, remove your claim on it with:
-
-```
-./release <namespace>
-```
