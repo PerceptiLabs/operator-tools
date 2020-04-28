@@ -78,13 +78,13 @@ clean-cluster: clean-namespace clean-storage ## Remove all perceptilabs-related 
 	@oc delete --ignore-not-found -f ${TOOLS_DIR}/operator-source.yaml
 	@oc delete customresourcedefinitions perceptilabs.perceptilabs.com --ignore-not-found
 
-remove-nvidia:
+remove-nvidia: ## Remove the Nvidia operator from the cluster
 	@${TOOLS_DIR}/remove-nvidia
 
-deploy-nvidia:
+deploy-nvidia: ## Deploy the Nvidia operator to the cluster and wait for it to annotate a node
 	@${TOOLS_DIR}/deploy-nvidia
 
-redeploy-nvidia: remove-nvidia deploy-nvidia
+redeploy-nvidia: remove-nvidia deploy-nvidia ## Remove and Deploy the Nvidia operator.
 
 # script-kiddied from https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .DEFAULT_GOAL := help
