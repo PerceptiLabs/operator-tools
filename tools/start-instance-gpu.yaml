@@ -6,6 +6,7 @@ metadata:
 spec:
   corePvc: perceptilabs-pvc
   coreGpus: REPLACE_GPU_COUNT
-  license_name: a8029b42-1b04-49cc-919b-97dbd66f903a
-  license_value: gAAAAABeLwu2zzbXxy4Hn3SDxc2w8WZf3IznkeUyDqpJdziEeaO8r2UdnbeB_99wzRFGvanXNvVTF56DNOoQGs5lDltdL5doqaAmTvhGEsX2v1dqFw5j4UK-yofGuY5S3q2fetaNFGyu
+  license_name: 0119abfb-eeed-48cd-989a-255a485785bf
+  license_value: gAAAAABeqGetb_9_uXd5wgKiPCoSNdRSFCgA12fIoNrKiBfL9tYHHQjsOg6GOp9b7HqR8YdTAuBkiz4RIjEDfM7EG_qWE3VP7QEeBpcRPMt2SS4vtOG-9yiyjhJ72LlXQF3yYKV5jfd8w12Z5CIBcwyvoRYbwgIUR2-OU2jzbjj9wXB0uaag09W9tCKfik29dos_X_fWo1PTzht2wIz4tVyC0kmxN8c_aVS_ehSxyyq33fI81eOc1jOfKUOimMJGtvihbFu0x0Nk
+
 
