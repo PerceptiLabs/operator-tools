@@ -1,8 +1,30 @@
 #!/usr/bin/env bash
 
 
+# script-kiddied from https://medium.com/@Drew_Stokes/bash-argument-parsing-54f3b81a6a8f
+PARAMS=""
+FORCE=""
+while (( "$#" )); do
+  case "$1" in
+    -f|--force)
+      FORCE=" --force "
+      shift
+      ;;
+    -*|--*=) # unsupported flags
+      echo "Error: Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *) # preserve positional arguments
+      PARAMS="$PARAMS $1"
+      shift
+      ;;
+  esac
+done
+# set positional arguments in their proper place
+eval set -- "$PARAMS"
+
 if [ $# -ne 3 ]; then
-  echo "USAGE: $0 <namespace> <image tag> <my name>"
+  echo "USAGE: $0 <namespace> <image tag> <my name> [--force|-f]"
   exit 1
 fi
 
@@ -22,7 +44,8 @@ echo
 if [ "${RESPONSE}" == "n" ]; then exit 0; fi
 
 # claim the namespace
-${DIR}/claim "${NAMESPACE}" "${WITH_DATE}" || { exit 1; }
+
+${DIR}/claim ${FORCE} "${NAMESPACE}" "${WITH_DATE}" || { exit 1; }
 
 sed "${SED_STR}" ${DIR}/global.yaml | oc apply -f - || { exit 1; }
 

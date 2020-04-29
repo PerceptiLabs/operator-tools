@@ -80,7 +80,7 @@ kind: ConfigMap
 metadata:
   name: core-url
 data:
-  core_url: perceptilabs-core-REPLACE_NAMESPACE.apps.os01.perceptilabshosting.com
+  core_url: perceptilabs-core-REPLACE_NAMESPACE.apps.oc12.perceptilabshosting.com
 ---
 apiVersion: apps/v1beta1
 kind: Deployment

@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
 
+# script-kiddied from https://medium.com/@Drew_Stokes/bash-argument-parsing-54f3b81a6a8f
+PARAMS=""
+FORCE=""
+while (( "$#" )); do
+  case "$1" in
+    -f|--force)
+      FORCE=" --overwrite "
+      shift
+      ;;
+    -*|--*=) # unsupported flags
+      echo "Error: Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *) # preserve positional arguments
+      PARAMS="$PARAMS $1"
+      shift
+      ;;
+  esac
+done
+# set positional arguments in their proper place
+eval set -- "$PARAMS"
+
+
 if [ $# -ne 2 ]; then
-  echo "USAGE: $0 <namespace> <name>"
+  echo "USAGE: $0 <namespace> <name> [--force|-f]"
   exit 1
 fi
 
@@ -17,4 +40,6 @@ if [ $? -ne 0 ]; then
   fi
 fi
 
-oc label namespace $1 claimed="$2" || { exit 1; }
+echo "Labeling the namespace with $2 ... "
+oc label namespace $1 claimed="$2" ${FORCE} || { exit 1; }
+echo "done"
