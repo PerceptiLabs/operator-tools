@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+usage(){
+  echo "USAGE: $0 <namespace> <image tag> <my name> [--force|-f] [--gpus|-g <count>]"
+}
 
 # script-kiddied from https://medium.com/@Drew_Stokes/bash-argument-parsing-54f3b81a6a8f
 PARAMS=""
@@ -10,8 +13,24 @@ while (( "$#" )); do
       FORCE=" --force "
       shift
       ;;
+		-g|--gpus)
+      if [ ! -n "$2" ] || [ ${2:0:1} == "-" ]; then
+        echo "Error: Argument for $1 is missing" >&2
+        usage
+        exit 1
+      fi
+      test -z "${2//[^0-9]}"
+      if [ $? -eq 0 ]; then
+        echo "Error: Argument for $1 is not a number. Got '$2'" >&2
+        usage
+        exit 1
+      fi
+      GPUS=$2
+      shift 2
+      ;;
     -*|--*=) # unsupported flags
       echo "Error: Unsupported flag $1" >&2
+      usage
       exit 1
       ;;
     *) # preserve positional arguments
@@ -25,6 +44,7 @@ eval set -- "$PARAMS"
 
 if [ $# -ne 3 ]; then
   echo "USAGE: $0 <namespace> <image tag> <my name> [--force|-f]"
+  usage
   exit 1
 fi
 
@@ -35,7 +55,14 @@ WITH_DATE=$(date "+${NAME}-%Y%m%M")
 
 SED_STR="s+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_TAG+${TAG}+g"
 
-DIR=$(dirname $0)
+# Set things up for deploying GPUs
+if [ "$GPUS" == "1" ]; then
+  if [ -z "${PL_LICENSE_NAME}" ] || [ -z "${PL_LICENSE_VALUE}" ]; then
+    echo "PL_LICENSE_NAME and/or PL_LICENSE_VALUE aren't set in your environment. GPU's won't be enabled without them"
+    exit 1
+  fi
+	SED_STR="${SED_STR}; s+REPLACE_LICENSE_NAME+${PL_LICENSE_NAME}+g; s+REPLACE_LICENSE_VALUE+${PL_LICENSE_VALUE}+g; s+REPLACE_GPUS+${GPUS}+g"
+fi
 
 # verify the cluster
 CTXT=$(oc config current-context | cut -d/ -f2)
@@ -44,6 +71,8 @@ echo
 if [ "${RESPONSE}" == "n" ]; then exit 0; fi
 
 # claim the namespace
+
+DIR=$(dirname $0)
 
 ${DIR}/claim ${FORCE} "${NAMESPACE}" "${WITH_DATE}" || { exit 1; }
 
@@ -66,6 +95,15 @@ if [ $? -ne 0 ]; then
     --namespace ${NAMESPACE} || { exit 1; }
 fi
 
-sed "${SED_STR}" ${DIR}/namespaced.yaml | oc apply --validate=false -n ${NAMESPACE} -f - || { exit 1; }
+if [ -z "$GPUS" ]; then
+	sed "${SED_STR}" ${DIR}/namespaced.yaml | oc apply --validate=false -n ${NAMESPACE} -f - || { exit 1; }
+elif [ "$GPUS" == "1" ]; then
+  if [ -z "${PL_LICENSE_NAME}" ] || [ -z "${PL_LICENSE_VALUE}" ]; then
+    echo "PL_LICENSE_NAME and/or PL_LICENSE_VALUE aren't set in your environment. GPU's won't be enabled without them"
+    exit 1
+  fi
+	SED_STR="${SED_STR}; s+REPLACE_LICENSE_NAME+${PL_LICENSE_NAME}+g; s+REPLACE_LICENSE_VALUE+${PL_LICENSE_VALUE}+g; s+REPLACE_GPUS+${GPUS}+g"
+	sed "${SED_STR}" ${DIR}/gpu.yaml | oc apply --validate=false -n ${NAMESPACE} -f - || { exit 1; }
+fi
 url=$(oc get routes.route.openshift.io --namespace ${NAMESPACE} perceptilabs-frontend --output="custom-columns=url:spec.host" --no-headers)
 echo "Serving at ${url}"

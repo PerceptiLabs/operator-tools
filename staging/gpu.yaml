@@ -1,0 +1,153 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: perceptilabs-license
+data:
+  dummy: value
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: perceptilabs-license
+data:
+  LICENSE_NAME: REPLACE_LICENSE_NAME
+  LICENSE_VALUE: REPLACE_LICENSE_VALUE
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: perceptilabs-pvc
+spec:
+  storageClassName: perceptilabs-staging01-sc
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: perceptilabs-core
+  labels: &default-labels
+    app.kubernetes.io/name: perceptilabs-core
+    app.kubernetes.io/version: v1.0.0-v1alpha1
+    app: perceptilabs
+spec:
+  replicas: 1
+  selector:
+    matchLabels: *default-labels
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels: *default-labels
+    spec:
+      containers:
+      - name: core
+        image: perceptilabs.azurecr.io/core:REPLACE_TAG
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            nvidia.com/gpu: REPLACE_GPUS
+        envFrom:
+          - configMapRef:
+              name: perceptilabs-license
+        volumeMounts:
+        - mountPath: /mnt/plabs
+          name: core-data-volume
+      imagePullSecrets:
+        - name: pl-pull
+      volumes:
+      - name: core-data-volume
+        persistentVolumeClaim:
+          claimName: perceptilabs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: perceptilabs-core
+spec:
+  selector:
+    app.kubernetes.io/name: perceptilabs-core
+    app.kubernetes.io/version: v1.0.0-v1alpha1
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: perceptilabs-core
+spec:
+  to:
+    kind: Service
+    name: perceptilabs-core
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: core-url
+data:
+  core_url: perceptilabs-core-REPLACE_NAMESPACE.apps.oc12.perceptilabshosting.com
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: perceptilabs-frontend
+  labels: &default-labels
+    app.kubernetes.io/name: perceptilabs-frontend
+    app.kubernetes.io/version: v1.0.0-v1alpha1
+    app: perceptilabs
+spec:
+  replicas: 1
+  selector:
+    matchLabels: *default-labels
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels: *default-labels
+    spec:
+      containers:
+      - name: frontend
+        image: perceptilabs.azurecr.io/frontend:REPLACE_TAG
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+          - name: core-url-volume
+            mountPath: /var/www/html/static/core_url
+            subPath: core_url
+      volumes:
+          - name: core-url-volume
+            configMap:
+              name: core-url
+      imagePullSecrets:
+        - name: pl-pull
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: perceptilabs-frontend
+spec:
+  selector:
+    app.kubernetes.io/name: perceptilabs-frontend
+    app.kubernetes.io/version: v1.0.0-v1alpha1
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+    - name: configserver
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: perceptilabs-frontend
+spec:
+  to:
+    kind: Service
+    name: perceptilabs-frontend
