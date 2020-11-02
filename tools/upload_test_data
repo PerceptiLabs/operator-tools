@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+TOOLS_DIR=${PROJECT_ROOT}/tools
+TEST_DATA=${PROJECT_ROOT}/test_data
+
+CORE_POD=$(${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-core- | tail -n 1)
+echo copying test data to ${CORE_POD}
+ls ${TEST_DATA} | xargs -L 1 -I {} oc cp ${TEST_DATA}/{} --namespace=${NAMESPACE} ${CORE_POD}:/mnt/plabs --container=core

@@ -5,7 +5,7 @@
 The following will deploy the operator from our source on quay.io:
 ```
 $ oc login <path to the cluster>
-$ NAMESPACE=<your-namespace> GPU_COUNT=1 make deploy
+$ NAMESPACE=<your-namespace> RELEASE_VERSION=1.0.20 GPU_COUNT=1 make deploy
 ```
 ... or omit the GPU_COUNT to install in demo mode
 
