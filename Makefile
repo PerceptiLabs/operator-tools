@@ -5,6 +5,7 @@ APP_NAME             = perceptilabs-operator${TRIAL}
 APP_REPOSITORY       = ${APP_NAME}-package
 APP_REGISTRY_API     = https://quay.io/cnr/api/v1/packages
 REGISTRY_ACCOUNT     = perceptilabs
+REGISTRY_REPO       = quay.io/perceptilabs/perceptilabs-operator-registry
 GPU_COUNT           ?= 0
 TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g; s+REPLACE_REPO_NAME+${APP_REPOSITORY}+g; s+REPLACE_SUBSCRIPTION_NAME+${APP_NAME}+g'
 TOOLS_DIR            = tools
@@ -13,10 +14,9 @@ CLUSTER_PROVIDER     = $(shell oc get nodes -o custom-columns=x:spec.providerID 
 require-%:
 	@: $(if ${${*}},,$(error You must pass the $* environment variable))
 
-install-custom-operator: ## Install the custom OperatorSource from the repos to the cluster
-	@${TOOLS_DIR}/check-quay ${APP_REGISTRY_API}/${REGISTRY_ACCOUNT}/${APP_REPOSITORY}
-	@oc apply -f ${TOOLS_DIR}/operator-source.yaml
-	@${TOOLS_DIR}/wait_for_log "openshift-marketplace" "perceptilabs-operators-" "serving registry" "perceptilabs-operators" &>/dev/null
+install-custom-operator: require-REGISTRY_VERSION ## Install the custom OperatorSource from the repos to the cluster
+	@sed 's+REPLACE_REGISTRY_REPO+${REGISTRY_REPO}:${REGISTRY_VERSION}+g' ${TOOLS_DIR}/catalog-source.yaml | oc apply -f -
+	@${TOOLS_DIR}/wait_for_log "openshift-marketplace" "perceptilabs-operators-" "serving registry" "registry-server" &>/dev/null
 	@echo operator pod is running
 
 namespace: require-NAMESPACE
@@ -58,13 +58,13 @@ valid-storage: core-pod
 deploy-from-quay: valid-storage core-route frontend-route ## Deploy and check the perceptilabs operator to the cluster and print the frontend route
 
 deploy-for-test: frontend-route core-route ## deploy from quay and upload MNIST data for testing
-	$(info copying test data to ${CORE_POD})
-	@ls test_data | xargs -L 1 -I {} oc cp test_data/{} --namespace=${NAMESPACE} ${CORE_POD}:/mnt/plabs --container=core
+	${TOOLS_DIR}/upload_test_data
 	@open ${FRONTEND_URL}
 
 deploy-from-operatorhub: namespace ## Deploy from the operatorhub
 	@oc apply --namespace=${NAMESPACE} -f ${TOOLS_DIR}/hub-prereqs.yaml
-	@read -p "Now you can go to the OperatorHub and install PerceptiLabs to ${NAMESPACE}."
+	@read -p "Now you can go to the OperatorHub and install PerceptiLabs to ${NAMESPACE}. Press enter when it's installed"
+	@${TOOLS_DIR}/upload_test_data
 
 clean-namespace: require-NAMESPACE ## Remove the installed namespace and everything in it
 	${TEMPLATE_CMD} ${TOOLS_DIR}/namespace.yaml | oc delete --ignore-not-found -f -
@@ -75,7 +75,7 @@ clean-storage: require-NAMESPACE ## Remove the persistent volume
 
 # TODO: this is a bit clunky since you have to delete one (and only one) namespace along with the operator
 clean-cluster: clean-namespace clean-storage ## Remove all perceptilabs-related objects from the cluster
-	@oc delete --ignore-not-found -f ${TOOLS_DIR}/operator-source.yaml
+	oc delete catalogsource -n openshift-marketplace perceptilabs-operators
 	@oc delete customresourcedefinitions perceptilabs.perceptilabs.com --ignore-not-found
 
 remove-nvidia: ## Remove the Nvidia operator from the cluster

@@ -1,0 +1,9 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+    name: perceptilabs-operators
+    namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: REPLACE_REGISTRY_REPO
+  displayName: Perceptilabs Catalog
