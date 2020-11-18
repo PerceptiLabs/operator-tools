@@ -4,7 +4,6 @@ metadata:
   name: REPLACE_NAMESPACE-operatorgroup
   namespace: REPLACE_NAMESPACE
 spec:
-  serviceAccountName: perceptilabs-operator
   targetNamespaces:
   - REPLACE_NAMESPACE
 ---
@@ -15,7 +14,7 @@ metadata:
   namespace: REPLACE_NAMESPACE
 spec:
   channel: stable
-  name: REPLACE_REPO_NAME
+  installPlanApproval: Automatic
+  name: REPLACE_SUBSCRIPTION_NAME
   source: perceptilabs-operators
   sourceNamespace: openshift-marketplace
-  namespace: REPLACE_NAMESPACE

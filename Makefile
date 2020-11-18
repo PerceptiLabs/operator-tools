@@ -1,13 +1,11 @@
 # Targets of interest
 # deploy - the main target you use to deploy to 
-TRIAL                = #-trial
-APP_NAME             = perceptilabs-operator${TRIAL}
+APP_NAME             = perceptilabs-operator
 APP_REPOSITORY       = ${APP_NAME}-package
-APP_REGISTRY_API     = https://quay.io/cnr/api/v1/packages
 REGISTRY_ACCOUNT     = perceptilabs
-REGISTRY_REPO       = quay.io/perceptilabs/perceptilabs-operator-registry
+REGISTRY_REPO        = quay.io/perceptilabs/perceptilabs-operator-registry
 GPU_COUNT           ?= 0
-TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g; s+REPLACE_REPO_NAME+${APP_REPOSITORY}+g; s+REPLACE_SUBSCRIPTION_NAME+${APP_NAME}+g'
+TEMPLATE_CMD         = @sed 's+REPLACE_NAMESPACE+${NAMESPACE}+g; s+REPLACE_GPU_COUNT+${GPU_COUNT}+g; s+REPLACE_SUBSCRIPTION_NAME+${APP_REPOSITORY}+g'
 TOOLS_DIR            = tools
 CLUSTER_PROVIDER     = $(shell oc get nodes -o custom-columns=x:spec.providerID --no-headers | cut -d: -f1 | uniq)
 
@@ -27,37 +25,43 @@ persistentvolume: namespace ## Create the persistent volume needed for core
 	@oc apply -f ${TOOLS_DIR}/storage-class-${CLUSTER_PROVIDER}.yaml
 	@oc apply -n ${NAMESPACE} -f ${TOOLS_DIR}/persistentvolumeclaim.yaml
 
-subscription: install-custom-operator persistentvolume namespace
+subscription: install-custom-operator namespace
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/subscription.yaml | oc apply -f -
 	@"${TOOLS_DIR}/wait_for_log" "${NAMESPACE}" "perceptilabs-operator-" "starting to serve" "operator"
 
-instance: subscription ## Install perceptilabs in NAMESPACE
+instance: subscription persistentvolume ## Install perceptilabs in NAMESPACE
 ifeq (${GPU_COUNT}, 0)
 	@oc apply --namespace=${NAMESPACE} -f ${TOOLS_DIR}/start-instance-demo.yaml
 else
 	@${TEMPLATE_CMD} ${TOOLS_DIR}/start-instance-gpu.yaml | oc apply -f -
 endif
 
-frontend-route: frontend-pod ## Get the frontend route for perceptilabs in NAMESPACE
-	@$(eval FRONTEND_URL="http://$(shell ${TOOLS_DIR}/get_live_route ${NAMESPACE} perceptilabs-frontend)")
-	$(info Route is serving at ${FRONTEND_URL})
+frontend-pod: instance
+	@${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-frontend- | tail -n 1
+
+rygg-pod: instance
+	@${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-rygg- | tail -n 1
 
 core-pod: instance
 	@${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-core- | tail -n 1
 	@$(eval CORE_POD=$(shell ${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-core- | tail -n 1))
 
+frontend-route: frontend-pod ## Get the frontend route for perceptilabs in NAMESPACE
+	@$(eval FRONTEND_URL="http://$(shell ${TOOLS_DIR}/get_live_route ${NAMESPACE} perceptilabs-frontend)")
+	$(info Route is serving at ${FRONTEND_URL})
+
+rygg-route: frontend-pod ## Get the frontend route for perceptilabs in NAMESPACE
+	@$(eval RYGG_URL="http://$(shell ${TOOLS_DIR}/get_live_route ${NAMESPACE} perceptilabs-rygg)")
+
 core-route: core-pod
 	@$(eval CORE_URL="http://$(shell ${TOOLS_DIR}/get_live_route ${NAMESPACE} perceptilabs-core)")
-
-frontend-pod: instance
-	@${TOOLS_DIR}/get_running_pod ${NAMESPACE} perceptilabs-frontend- | tail -n 1
 
 valid-storage: core-pod
 	@oc cp README.md --namespace=${NAMESPACE} ${CORE_POD}:/mnt/plabs --container=core
 
-deploy-from-quay: valid-storage core-route frontend-route ## Deploy and check the perceptilabs operator to the cluster and print the frontend route
+deploy-from-quay: valid-storage core-route frontend-route rygg-route ## Deploy and check the perceptilabs operator to the cluster and print the frontend route
 
-deploy-for-test: frontend-route core-route ## deploy from quay and upload MNIST data for testing
+deploy-for-test: frontend-route core-route rygg-route ## deploy from quay and upload MNIST data for testing
 	${TOOLS_DIR}/upload_test_data
 	@open ${FRONTEND_URL}
 
